@@ -1,157 +1,96 @@
-# Joystream
+![Joystream Runtime](./banner_new.svg)
 
-This is the main code repository for all Joystream software. In this mono-repo you will find all the software required to run a Joystream network: The Joystream full node, runtime and all reusable substrate runtime modules that make up the Joystream runtime. In addition to all front-end apps and infrastructure servers necessary for operating the network.
+# Joystream Runtime
 
-## Overview
+The runtime is the code that defines the consensus rules of the Joystream protocol.
+It is compiled to WASM and lives on chain. [Full nodes](https://github.com/Joystream/substrate-node-joystream) execute the code's logic to validate transactions and blocks on the blockchain.
 
-The Joystream network builds on the [substrate](https://substrate.io/) blockchain framework, and adds additional
-functionality to support the [various roles](https://joystream.gitbook.io/testnet-workspace/system/working-groups) that can be entered into on the platform.
+The joystream runtime builds on [substrate v1.0](https://docs.substrate.dev/docs) and adds additional functionality:
 
-## Development
+- [Council elections](src/governance/election.rs)
+- [Runtime Upgrade proposal system](src/governance/proposals.rs)
+- [User membership system](src/membership/)
+- [Staked Roles](src/roles)
+   - [Storage Provider](src/storage/)
+- [Forum](https://github.com/Joystream/substrate-forum-module)
+- [Discovery](src/discovery_service)
 
-For best results use GNU/Linux with minimum glibc version 2.28 for nodejs v18 to work.
-So Ubuntu 20.04 or newer.
-
-You can check your version of glibc with `ldd --version`
-
-The following tools are required for building, testing and contributing to this repo:
-
-- [Rust](https://www.rust-lang.org/tools/install) toolchain - _required_
-- [nodejs](https://nodejs.org/) >= v14.18.x - _required_ (However volta will try to use v18.6)
-- [yarn classic](https://classic.yarnpkg.com/en/docs/install) package manager v1.22.x- _required_
-- [docker](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) v2.20.x or higher - _required_
-- [ansible](https://www.ansible.com/) - _optional_
-
-If you use VSCode as your code editor we recommend using the workspace [settings](devops/vscode/settings.json) for recommend eslint plugin to function properly.
-
-After cloning the repo run the following to get started:
-
-### Install development tools
-```sh
-./setup.sh
-```
-
-### If you prefer your own node version manager
-Install development tools without Volta version manager.
-
-```sh
-./setup.sh --no-volta
-```
-
-### For older operating systems which don't support node 18
-Modify the root `package.json` and change volta section to use node version 16.20.1 instead of 18.6.0
-```json
-"volta": {
-    "node": "16.20.1",
-    "yarn": "1.22.19"
-}
-```
-
-### Run local development network
-
-```sh
-# Build local npm packages
-yarn build
-
-# Build joystream/node docker testing image
-RUNTIME_PROFILE=TESTING yarn build:node:docker
-
-# Start a local development network
-yarn start
-```
-
-## Software
-
-**Substrate blockchain**
-
-- [joystream-node](./bin/node)
-- [runtime](./runtime)
-- [runtime modules](./runtime-modules)
-
-**Server Applications - infrastructure**
-
-- [Storage Node](./storage-node) - Media Storage Infrastructure
-- [Query Node](./query-node)
-- [Distributor Node](./distributor-node)
-
-**Front-end Applications**
-
-- [Pioneer v2](https://github.com/Joystream/pioneer) - Main UI for accessing Joystream community and governance features
-- [Atlas](https://github.com/Joystream/atlas) - Media Player
-
-**Tools and CLI**
-
-- [joystream-cli](./cli) - CLI for community and governance activities
-
-**Testing infrastructure**
-
-- [Network integration](./tests/network-tests) - Joystream network integration testing framework
-
-## Running a local full node
-
-```sh
-git checkout master
-WASM_BUILD_TOOLCHAIN=nightly-2022-11-15 cargo build --release
-./target/release/joystream-node -- --pruning archive --chain joy-mainnet.json
-```
-
-Learn more about [joystream-node](bin/node/README.md).
-
-A step by step guide to setup a full node and validator on the Joystream main network, can be found [here](https://handbook.joystream.org/system/validation).
-
-### Pre-built joystream-node binaries
-Look under the 'Assets' section:
-
-- Ephesus release [v8.3.0](https://github.com/Joystream/joystream/releases/tag/v12.2001.0)
-
-### Mainnet chainspec file
-- [joy-mainnet.json](https://github.com/Joystream/joystream/releases/download/v12.1000.0/joy-mainnet.json)
-
-### Integration tests
+## Getting Started - Building the WASM runtime
 
 ```bash
-# Make sure yarn packages are built
-yarn build
+# Clone repository
+git clone https://github.com/Joystream/substrate-runtime-joystream
+cd substrate-runtime-joystream/
 
-# Build the test joystream-node
-RUNTIME_PROFILE=TESTING yarn build:node:docker
+# Install Pre-requisits
+./setup.sh
 
-# Run tests
-yarn test
+# Compile runtime
+./build.sh
 ```
 
-### Contributing
+This produces the WASM "blob" output in:
 
-We have lots of good first [issues](https://github.com/Joystream/joystream/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) open to help you get started on contributing code. If you are not a developer you can still make valuable contributions by testing our software and providing feedback and opening new issues.
+`wasm/target/wasm32-unknown-unknown/release/joystream_node_runtime_wasm.compact.wasm`
 
-A description of our [branching model](https://github.com/Joystream/joystream/issues/638) will help you to understand where work on different software components happens, and consequently where to direct your pull requests.
+See deployment for notes on how to deploy this runtime on a live system.
 
-We rely on `eslint` for code quality of our JavaScript and TypeScript code and `prettier` for consistent formatting. For Rust we rely on `rustfmt` and `clippy`.
+## Deployment
 
-The [husky](https://www.npmjs.com/package/husky#ci-servers) npm package is used to manage the project git-hooks. This is automatically installed and setup when you run `yarn install`.
+Deploying the compiled runtime on a live system can be done in one of two ways:
 
-When you `git commit` and `git push` some scripts will run automatically to ensure committed code passes lint, tests, and code-style checks.
+1. Joystream runtime upgrade proposals which will be voted on by the council. When the Joystream platform is live, this will be the only way to upgrade the chain's runtime code.
 
-During a rebase/merge you may want to skip all hooks, you can use `HUSKY_SKIP_HOOKS` environment variable.
+2. During development and testnet phases, we can send an extrinsic (transaction signed with the sudo key) invoking `conesnsus::setCode()`. This can be done either from the UI/extrinsics app, or directly with an admin script.
+
+## Running the tests
+
+```bash
+cargo test
+```
+
+## Coding style
+
+We use `rustfmt` to format the source code for consistency.
+
+[rustfmt](https://github.com/rust-lang/rustfmt) can be installed with rustup:
 
 ```
-HUSKY_SKIP_HOOKS=1 git rebase ...
+rustup component add rustfmt
 ```
 
-## RLS Extension in VScode or Atom Editors
+Running rustfmt can be applied to all source files recursing subfolders:
 
-If you use RLS extension in your IDE, start your editor with the `BUILD_DUMMY_WASM_BINARY=1` environment set to workaround a build issue that occurs in the IDE only.
+```
+rustfmt src/*.*
+```
 
-`BUILD_DUMMY_WASM_BINARY=1 code ./joystream`
+## Reproducible Builds
+
+In an attempt to have a reproducuble version of the runtime that can be verified independantly (by council members for example when deciding wether to vote in a runtime upgrade proposal) there is a `build-with-docker.sh` script which can be run to generate a `joystream_runtime.wasm` file to the current directory.
+
+## Built With
+
+* [Substrate](https://github.com/paritytech/substrate)
+
+## Contributing
+
+Please see our [contributing guidlines](https://github.com/Joystream/joystream#contribute) for details on our code of conduct, and the process for submitting pull requests to us.
+
+## Versioning
+
+Versioning of the runtime is set in `src/lib.rs`
+For detailed information about how to set correct version numbers when developing a new runtime, [see this](https://github.com/paritytech/substrate/blob/master/core/sr-version/src/lib.rs#L60)
+
 
 ## Authors
 
-See the list of [contributors](https://github.com/Joystream/joystream/graphs/contributors) who participated in this project.
+See also the list of [contributors](./CONTRIBUTORS) who participated in this project.
 
 ## License
 
-All software under this project is licensed as [GPLv3](./LICENSE) unless otherwise indicated.
+This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
-Thanks to the whole [Parity Tech](https://www.parity.io/) team for making substrate and helping in chat with tips, suggestions, tutorials and answering all our questions during development.
+Thanks to the whole [Parity Tech](https://www.parity.io/) team for making substrate and helping on riot chat with tips, suggestions, tutorials and answering all our questions during development.
